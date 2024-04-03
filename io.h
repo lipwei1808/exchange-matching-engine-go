@@ -6,14 +6,20 @@
 
 #include <stdint.h>
 
-enum input_type { input_buy = 'B', input_sell = 'S', input_cancel = 'C' };
+enum input_type
+{
+  input_buy = 'B',
+  input_sell = 'S',
+  input_cancel = 'C'
+};
 
-struct input {
+typedef struct input
+{
   enum input_type type;
   uint32_t order_id;
   uint32_t price;
   uint32_t count;
   char instrument[9];
-};
+} ClientCommand;
 
 #endif
