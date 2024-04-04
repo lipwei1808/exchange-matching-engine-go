@@ -4,7 +4,6 @@ package main
 // There should be no need to modify this file.
 
 // #cgo CFLAGS: -g -Wall -Iinclude
-// #cgo LDFLAGS: -L${SRCDIR}/lib/linux -lvibesimple -lcurl -lssl -lvibecrypto -lvibeictk -lvibeserver
 /*
 #include <stdint.h>
 #include "io.h"

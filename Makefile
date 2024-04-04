@@ -8,10 +8,15 @@ CXX = clang++
 CFLAGS := $(CFLAGS) -g -O3 -Wall -Wextra -pedantic -Werror -std=c18 -pthread
 CXXFLAGS := $(CXXFLAGS) -g -O3 -Wall -Wextra -pedantic -Werror -std=c++20 -pthread
 
-all: engine
+BUILD_DIR := build
+
+all: engine client
 
 engine:
-	$(GO) build -o $@ $(GOFILES)
+	$(GO) build -o $(BUILD_DIR)/$@ $(GOFILES)
+
+client: build/client.cpp.o
+	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o build/$@
 
 .PHONY: clean
 clean:
@@ -29,10 +34,12 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$<.d
 
 COMPILE.cpp = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 
-%.cpp.o: %.cpp
-%.cpp.o: %.cpp $(DEPDIR)/%.cpp.d | $(DEPDIR)
+build/%.cpp.o: client/%.cpp
+build/%.cpp.o: client/%.cpp $(DEPDIR)/%.cpp.d | $(DEPDIR)
 	$(COMPILE.cpp) $(OUTPUT_OPTION) $<
 
+
+$(BUILD_DIR): ; @mkdir -p $@
 $(DEPDIR): ; @mkdir -p $@
 
 DEPFILES := $(SRCS:%=$(DEPDIR)/%.d) $(DEPDIR)/client.cpp.d
