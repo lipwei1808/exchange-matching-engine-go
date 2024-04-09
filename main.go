@@ -44,7 +44,7 @@ func main() {
 		}
 	}()
 
-	var e Engine
+	e := NewEngine(ctx)
 	for {
 		conn, err := l.Accept()
 		if err != nil {
