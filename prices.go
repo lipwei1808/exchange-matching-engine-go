@@ -1,16 +1,19 @@
 package main
 
-import "context"
+import (
+	"container/heap"
+	"context"
+)
 
 type Prices struct {
-	prices    map[uint32]*[]Order
+	prices    map[uint32]*PriceLevel
 	inputChan chan *Order
 	oppChan   chan *Order
 }
 
 func NewPrices(ctx context.Context, oppChan chan *Order) *Prices {
 	p := &Prices{
-		prices:    make(map[uint32]*[]Order),
+		prices:    make(map[uint32]*PriceLevel),
 		inputChan: make(chan *Order),
 		oppChan:   oppChan,
 	}
@@ -29,9 +32,9 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 	}
 }
 
-func (p *Prices) execute(ctx context.Context, oppOrder *Order) {
+func (p *Prices) Execute(ctx context.Context, oppOrder *Order) {
 	// check for valid matches
-	matches := match(oppOrder)
+	matches := p.Match(oppOrder)
 
 	if matches == oppOrder.count {
 		return
@@ -43,10 +46,10 @@ func (p *Prices) execute(ctx context.Context, oppOrder *Order) {
 		break
 	case o := <-p.oppChan:
 		// add order to heap
-		add(o)
+		p.Add(o)
 
 		// re-execute current oppOrder
-		p.execute(ctx, oppOrder)
+		p.Execute(ctx, oppOrder)
 
 	// if no order in oppChan, send order to add.
 	case p.oppChan <- oppOrder:
@@ -57,11 +60,17 @@ func (p *Prices) execute(ctx context.Context, oppOrder *Order) {
 // Attempts to match opposing order with resting orders on the heap
 // @param oppOrder order of the opposing type
 // @returns number of successful quantity matches
-func match(oppOrder *Order) uint32 {
+func (p *Prices) Match(oppOrder *Order) uint32 {
 	return 0
 }
 
 // Adds an order of the same type to the heap
-func add(order *Order) {
-
+func (p *Prices) Add(o *Order) {
+	_, exists := p.prices[o.price]
+	if !exists {
+		os := make(PriceLevel, 0)
+		p.prices[o.price] = &os
+	}
+	pl, _ := p.prices[o.price]
+	heap.Push(pl, o)
 }

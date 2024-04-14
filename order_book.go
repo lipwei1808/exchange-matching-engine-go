@@ -29,10 +29,10 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		case o := <-ob.inputChan:
 			switch o.orderType {
 			case inputBuy:
-				ob.asks.execute(ctx, o)
+				ob.asks.Execute(ctx, o)
 				break
 			case inputSell:
-				ob.bids.execute(ctx, o)
+				ob.bids.Execute(ctx, o)
 				break
 			default:
 				break
