@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -94,6 +95,10 @@ func (p *Prices) Match(incoming *Order) uint32 {
 	matched := uint32(0)
 	for incoming.count > 0 {
 		// check if any valid orders to match
+		if len(p.prices) == 0 {
+			break
+		}
+
 		if !p.IsMatchable(incoming) {
 			break
 		}
@@ -135,6 +140,7 @@ func MatchOrders(resting, incoming *Order) {
 
 // Adds an order of the same type to the heap
 func (p *Prices) Add(o *Order) {
+	fmt.Printf("[Add] %c order: %d\n", p.pricesType, o.orderId)
 	if o.orderType != p.pricesType {
 		return
 	}

@@ -11,19 +11,18 @@ import (
 )
 
 type MainChanRequest struct {
-	input  *input
-	output chan *OrderBook
+	instrument string
+	output     chan *OrderBook
 }
 
 type Engine struct {
 	instruments map[string]*OrderBook
-	mainChan    chan *MainChanRequest
+	mainChan    chan MainChanRequest
 }
 
 func NewEngine(ctx context.Context) *Engine {
-	mainChan := make(chan *MainChanRequest)
 	e := &Engine{
-		mainChan:    mainChan,
+		mainChan:    make(chan MainChanRequest),
 		instruments: make(map[string]*OrderBook),
 	}
 
@@ -38,7 +37,7 @@ func (e *Engine) engineWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case p := <-e.mainChan:
-			ob := e.GetOrderBook(ctx, p.input.instrument)
+			ob := e.GetOrderBook(ctx, p.instrument)
 			p.output <- ob
 		}
 	}
@@ -86,7 +85,15 @@ func (e *Engine) handleConn(ctx context.Context, conn net.Conn) {
 				executionId: 0,
 			}
 			orders[o.orderId] = &o
-			ob := e.GetOrderBook(ctx, o.instrument)
+
+			output := make(chan *OrderBook)
+			req := MainChanRequest{
+				instrument: in.instrument,
+				output:     output,
+			}
+			e.mainChan <- req
+
+			ob := <-output
 			ob.HandleOrder(&o)
 		}
 	}
