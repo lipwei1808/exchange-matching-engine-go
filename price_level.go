@@ -6,8 +6,21 @@ func (p PriceLevel) Len() int {
 	return len(p)
 }
 
+// Ordering based on price, timestamp then id
 func (p PriceLevel) Less(i, j int) bool {
-	return p[i].price < p[j].price
+	if p[i].price == p[j].price {
+		if p[i].timestamp == p[j].timestamp {
+			return p[i].orderId < p[j].orderId
+		}
+
+		return p[i].timestamp < p[j].timestamp
+	}
+
+	if p[i].orderType == inputSell {
+		return p[i].price < p[j].price
+	}
+
+	return p[j].price < p[i].price
 }
 
 func (p PriceLevel) Swap(i, j int) {

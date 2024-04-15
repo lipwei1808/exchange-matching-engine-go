@@ -10,9 +10,19 @@ type OrderBook struct {
 
 func NewOrderBook(ctx context.Context) *OrderBook {
 	oppChan := make(chan *Order)
+	bids, err := NewPrices(ctx, oppChan, inputBuy)
+	if err != nil {
+		panic(err)
+	}
+
+	asks, err := NewPrices(ctx, oppChan, inputSell)
+	if err != nil {
+		panic(err)
+	}
+
 	ob := OrderBook{
-		bids:      NewPrices(ctx, oppChan),
-		asks:      NewPrices(ctx, oppChan),
+		bids:      bids,
+		asks:      asks,
 		inputChan: make(chan *Order),
 	}
 
@@ -29,10 +39,10 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		case o := <-ob.inputChan:
 			switch o.orderType {
 			case inputBuy:
-				ob.asks.Execute(ctx, o)
+				ob.asks.HandleOrder(o)
 				break
 			case inputSell:
-				ob.bids.Execute(ctx, o)
+				ob.bids.HandleOrder(o)
 				break
 			default:
 				break
