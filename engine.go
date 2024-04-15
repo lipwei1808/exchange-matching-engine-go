@@ -49,11 +49,12 @@ func (e *Engine) accept(ctx context.Context, conn net.Conn) {
 		<-ctx.Done()
 		conn.Close()
 	}()
-	go handleConn(conn)
+	go e.handleConn(ctx, conn)
 }
 
-func handleConn(conn net.Conn) {
+func (e *Engine) handleConn(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
+	orders := make(map[uint32]*Order)
 	for {
 		in, err := readInput(conn)
 		if err != nil {
@@ -65,13 +66,29 @@ func handleConn(conn net.Conn) {
 		switch in.orderType {
 		case inputCancel:
 			fmt.Fprintf(os.Stderr, "Got cancel ID: %v\n", in.orderId)
-			outputOrderDeleted(in, true, GetCurrentTimestamp())
+			o, exists := orders[in.orderId]
+			if !exists {
+				outputOrderDeleted(in, false, GetCurrentTimestamp())
+				continue
+			}
+
+			ob := e.GetOrderBook(ctx, o.instrument)
+			ob.CancelOrder(o)
 		default:
 			fmt.Fprintf(os.Stderr, "Got order: %c %v x %v @ %v ID: %v\n",
 				in.orderType, in.instrument, in.count, in.price, in.orderId)
-			outputOrderAdded(in, GetCurrentTimestamp())
+			o := Order{
+				orderType:   in.orderType,
+				orderId:     in.orderId,
+				price:       in.price,
+				count:       in.count,
+				instrument:  in.instrument,
+				executionId: 0,
+			}
+			orders[o.orderId] = &o
+			ob := e.GetOrderBook(ctx, o.instrument)
+			ob.HandleOrder(&o)
 		}
-		outputOrderExecuted(123, 124, 1, 2000, 10, GetCurrentTimestamp())
 	}
 }
 
