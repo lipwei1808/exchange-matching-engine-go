@@ -72,8 +72,9 @@ func (e *Engine) handleConn(conn net.Conn) {
 			}
 
 			ob := e.RequestOrderBook(in.instrument)
+			ot := o.orderType
 			o.orderType = inputCancel
-			ob.HandleOrder(o)
+			ob.HandleOrder(OrderBookRequest{order: o, orderType: ot})
 		default:
 			fmt.Fprintf(os.Stderr, "Got order: %c %v x %v @ %v ID: %v\n",
 				in.orderType, in.instrument, in.count, in.price, in.orderId)
@@ -88,7 +89,7 @@ func (e *Engine) handleConn(conn net.Conn) {
 			orders[o.orderId] = &o
 
 			ob := e.RequestOrderBook(in.instrument)
-			ob.HandleOrder(&o)
+			ob.HandleOrder(OrderBookRequest{order: &o, orderType: o.orderType})
 		}
 	}
 }

@@ -1,8 +1,11 @@
 package main
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
-type OrderBookInput struct {
+type OrderBookRequest struct {
 	order     *Order
 	orderType inputType
 }
@@ -10,7 +13,7 @@ type OrderBookInput struct {
 type OrderBook struct {
 	bids      *Prices
 	asks      *Prices
-	inputChan chan *OrderBookInput
+	inputChan chan OrderBookRequest
 }
 
 func NewOrderBook(ctx context.Context) *OrderBook {
@@ -28,7 +31,7 @@ func NewOrderBook(ctx context.Context) *OrderBook {
 	ob := OrderBook{
 		bids:      bids,
 		asks:      asks,
-		inputChan: make(chan *OrderBookInput),
+		inputChan: make(chan OrderBookRequest),
 	}
 
 	go ob.orderBookWorker(ctx)
@@ -42,6 +45,7 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case o := <-ob.inputChan:
+			fmt.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", o.order.orderId, o.order.orderType)
 			switch o.orderType {
 			case inputBuy:
 				ob.asks.HandleOrder(o.order)
@@ -58,11 +62,11 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 				}
 				break
 			}
-			return
 		}
 	}
 }
 
-func (ob *OrderBook) HandleOrder(order *Order) {
-	ob.inputChan <- order
+func (ob *OrderBook) HandleOrder(req OrderBookRequest) {
+	fmt.Printf("[order_book.HandleOrder] order: %d\n", req.order.orderId)
+	ob.inputChan <- req
 }

@@ -21,9 +21,10 @@ func NewPrices(ctx context.Context, oppChan chan *Order, pricesType inputType) (
 	}
 
 	p := &Prices{
-		prices:    make(PriceLevel, 0),
-		inputChan: make(chan *Order),
-		oppChan:   oppChan,
+		pricesType: pricesType,
+		prices:     make(PriceLevel, 0),
+		inputChan:  make(chan *Order),
+		oppChan:    oppChan,
 	}
 
 	go p.pricesWorker(ctx)
@@ -37,19 +38,14 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case o := <-p.oppChan:
-			switch o.orderType {
-			case inputCancel:
-
-			}
+			fmt.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
+			p.Add(o)
 			break
 		case o := <-p.inputChan:
+			fmt.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
 			switch o.orderType {
 			case inputCancel:
-				if p.pricesType == o.orderType {
-					return
-				}
-
-				p.oppChan <- o
+				p.Cancel(o)
 				break
 			default:
 				p.Execute(ctx, o)
@@ -60,6 +56,7 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 }
 
 func (p *Prices) HandleOrder(o *Order) {
+	fmt.Printf("[prices.HandleOrder (%c)] orderid: %d\n", p.pricesType, o.orderId)
 	p.inputChan <- o
 }
 
@@ -150,17 +147,10 @@ func (p *Prices) Match(incoming *Order) uint32 {
 
 func MatchOrders(resting, incoming *Order) {
 	qty := uint32(math.Min(float64(resting.count), float64(incoming.count)))
-	if resting.count == incoming.count {
-		resting.Fill(qty)
-		incoming.Fill(qty)
-	} else if resting.count > incoming.count {
-		resting.Fill(incoming.count)
-		incoming.Fill(incoming.count)
-	} else {
-		resting.Fill(resting.count)
-		incoming.Fill(resting.count)
-	}
+	resting.Fill(qty)
+	incoming.Fill(qty)
 
+	fmt.Printf("[prices.MatchOrders] qty: %d, resting cnt: %d, incomnig cnt: %d\n", qty, resting.count, incoming.count)
 	outputOrderExecuted(
 		resting.orderId,
 		incoming.orderId,
@@ -173,7 +163,7 @@ func MatchOrders(resting, incoming *Order) {
 
 // Adds an order of the same type to the heap
 func (p *Prices) Add(o *Order) {
-	fmt.Printf("[Add] %c order: %d\n", p.pricesType, o.orderId)
+	fmt.Printf("[prices.Add (%c)] order: %d\n", p.pricesType, o.orderId)
 	if o.orderType != p.pricesType {
 		return
 	}
