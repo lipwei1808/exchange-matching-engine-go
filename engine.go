@@ -48,10 +48,10 @@ func (e *Engine) accept(ctx context.Context, conn net.Conn) {
 		<-ctx.Done()
 		conn.Close()
 	}()
-	go e.handleConn(ctx, conn)
+	go e.handleConn(conn)
 }
 
-func (e *Engine) handleConn(ctx context.Context, conn net.Conn) {
+func (e *Engine) handleConn(conn net.Conn) {
 	defer conn.Close()
 	orders := make(map[uint32]*Order)
 	for {
@@ -71,8 +71,9 @@ func (e *Engine) handleConn(ctx context.Context, conn net.Conn) {
 				continue
 			}
 
-			ob := e.GetOrderBook(ctx, o.instrument)
-			ob.CancelOrder(o)
+			ob := e.RequestOrderBook(in.instrument)
+			o.orderType = inputCancel
+			ob.HandleOrder(o)
 		default:
 			fmt.Fprintf(os.Stderr, "Got order: %c %v x %v @ %v ID: %v\n",
 				in.orderType, in.instrument, in.count, in.price, in.orderId)
@@ -86,17 +87,21 @@ func (e *Engine) handleConn(ctx context.Context, conn net.Conn) {
 			}
 			orders[o.orderId] = &o
 
-			output := make(chan *OrderBook)
-			req := MainChanRequest{
-				instrument: in.instrument,
-				output:     output,
-			}
-			e.mainChan <- req
-
-			ob := <-output
+			ob := e.RequestOrderBook(in.instrument)
 			ob.HandleOrder(&o)
 		}
 	}
+}
+
+func (e *Engine) RequestOrderBook(i string) *OrderBook {
+	output := make(chan *OrderBook)
+	req := MainChanRequest{
+		instrument: i,
+		output:     output,
+	}
+	e.mainChan <- req
+
+	return <-output
 }
 
 func (e *Engine) GetOrderBook(ctx context.Context, instrument string) *OrderBook {

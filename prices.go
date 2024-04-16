@@ -37,13 +37,36 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case o := <-p.inputChan:
-			p.Execute(ctx, o)
+			switch o.orderType {
+			case inputCancel:
+				if p.pricesType == o.orderType {
+					return
+				}
+
+				p.oppChan <- o
+				break
+			default:
+				p.Execute(ctx, o)
+			}
+
 		}
 	}
 }
 
 func (p *Prices) HandleOrder(o *Order) {
 	p.inputChan <- o
+}
+
+func (p *Prices) Cancel(o *Order) {
+	for i, d := range p.prices {
+		if d.orderId == o.orderId {
+			p.prices[i], p.prices[len(p.prices)-1] = p.prices[len(p.prices)-1], p.prices[i]
+			p.prices = p.prices[:len(p.prices)-1]
+			break
+		}
+	}
+
+	heap.Init(&p.prices)
 }
 
 func (p *Prices) Execute(ctx context.Context, oppOrder *Order) {
@@ -64,8 +87,12 @@ func (p *Prices) Execute(ctx context.Context, oppOrder *Order) {
 	case <-ctx.Done():
 		break
 	case o := <-p.oppChan:
-		// add order to heap
-		p.Add(o)
+		// perform operation on order
+		if o.orderType == inputCancel {
+			p.Cancel(o)
+		} else {
+			p.Add(o)
+		}
 
 		// re-execute current oppOrder
 		p.Execute(ctx, oppOrder)

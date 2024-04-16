@@ -45,6 +45,8 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 				ob.bids.HandleOrder(o)
 				break
 			default:
+				ob.asks.HandleOrder(o)
+				ob.bids.HandleOrder(o)
 				break
 			}
 			return
@@ -54,14 +56,4 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 
 func (ob *OrderBook) HandleOrder(order *Order) {
 	ob.inputChan <- order
-}
-
-func (ob *OrderBook) CancelOrder(o *Order) {
-	isBuy := o.orderType == inputBuy
-	o.orderType = inputCancel
-	if isBuy {
-		ob.bids.HandleOrder(o)
-	} else {
-		ob.asks.HandleOrder(o)
-	}
 }
