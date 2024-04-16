@@ -36,6 +36,12 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case o := <-p.oppChan:
+			switch o.orderType {
+			case inputCancel:
+
+			}
+			break
 		case o := <-p.inputChan:
 			switch o.orderType {
 			case inputCancel:

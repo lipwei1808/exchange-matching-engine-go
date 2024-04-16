@@ -2,10 +2,15 @@ package main
 
 import "context"
 
+type OrderBookInput struct {
+	order     *Order
+	orderType inputType
+}
+
 type OrderBook struct {
 	bids      *Prices
 	asks      *Prices
-	inputChan chan *Order
+	inputChan chan *OrderBookInput
 }
 
 func NewOrderBook(ctx context.Context) *OrderBook {
@@ -23,7 +28,7 @@ func NewOrderBook(ctx context.Context) *OrderBook {
 	ob := OrderBook{
 		bids:      bids,
 		asks:      asks,
-		inputChan: make(chan *Order),
+		inputChan: make(chan *OrderBookInput),
 	}
 
 	go ob.orderBookWorker(ctx)
@@ -39,14 +44,18 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		case o := <-ob.inputChan:
 			switch o.orderType {
 			case inputBuy:
-				ob.asks.HandleOrder(o)
+				ob.asks.HandleOrder(o.order)
 				break
 			case inputSell:
-				ob.bids.HandleOrder(o)
+				ob.bids.HandleOrder(o.order)
 				break
 			default:
-				ob.asks.HandleOrder(o)
-				ob.bids.HandleOrder(o)
+				if o.orderType == inputBuy {
+					ob.bids.HandleOrder(o.order)
+				} else {
+					ob.asks.HandleOrder(o.order)
+
+				}
 				break
 			}
 			return
