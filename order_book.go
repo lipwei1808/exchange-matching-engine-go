@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 )
 
 type OrderBookRequest struct {
@@ -45,7 +45,7 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case o := <-ob.inputChan:
-			fmt.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", o.order.orderId, o.order.orderType)
+			log.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", o.order.orderId, o.order.orderType)
 			switch o.orderType {
 			case inputBuy:
 				ob.asks.HandleOrder(o.order)
@@ -67,6 +67,6 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 }
 
 func (ob *OrderBook) HandleOrder(req OrderBookRequest) {
-	fmt.Printf("[order_book.HandleOrder] order: %d\n", req.order.orderId)
+	log.Printf("[order_book.HandleOrder] order: %d\n", req.order.orderId)
 	ob.inputChan <- req
 }

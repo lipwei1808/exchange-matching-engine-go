@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -32,6 +33,9 @@ func main() {
 	go func() {
 		handleSigs(cancel)
 	}()
+
+	// Disable logger
+	log.SetOutput(io.Discard)
 
 	l, err := net.Listen("unix", socketPath)
 	if err != nil {

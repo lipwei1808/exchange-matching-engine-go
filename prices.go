@@ -4,7 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"math"
 )
 
@@ -38,11 +38,11 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case o := <-p.oppChan:
-			fmt.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
+			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
 			p.Add(o)
 			break
 		case o := <-p.inputChan:
-			fmt.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
+			log.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
 			switch o.orderType {
 			case inputCancel:
 				p.Cancel(o)
@@ -56,7 +56,7 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 }
 
 func (p *Prices) HandleOrder(o *Order) {
-	fmt.Printf("[prices.HandleOrder (%c)] orderid: %d\n", p.pricesType, o.orderId)
+	log.Printf("[prices.HandleOrder (%c)] orderid: %d\n", p.pricesType, o.orderId)
 	p.inputChan <- o
 }
 
@@ -150,7 +150,7 @@ func MatchOrders(resting, incoming *Order) {
 	resting.Fill(qty)
 	incoming.Fill(qty)
 
-	fmt.Printf("[prices.MatchOrders] qty: %d, resting cnt: %d, incomnig cnt: %d\n", qty, resting.count, incoming.count)
+	log.Printf("[prices.MatchOrders] qty: %d, resting cnt: %d, incomnig cnt: %d\n", qty, resting.count, incoming.count)
 	outputOrderExecuted(
 		resting.orderId,
 		incoming.orderId,
@@ -163,7 +163,7 @@ func MatchOrders(resting, incoming *Order) {
 
 // Adds an order of the same type to the heap
 func (p *Prices) Add(o *Order) {
-	fmt.Printf("[prices.Add (%c)] order: %d\n", p.pricesType, o.orderId)
+	log.Printf("[prices.Add (%c)] order: %d\n", p.pricesType, o.orderId)
 	if o.orderType != p.pricesType {
 		return
 	}
