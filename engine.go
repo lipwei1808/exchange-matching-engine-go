@@ -55,6 +55,8 @@ func (e *Engine) accept(ctx context.Context, conn net.Conn) {
 func (e *Engine) handleConn(conn net.Conn) {
 	defer conn.Close()
 	orders := make(map[uint32]*Order)
+
+	output := make(chan interface{})
 	for {
 		in, err := readInput(conn)
 		if err != nil {
@@ -75,7 +77,7 @@ func (e *Engine) handleConn(conn net.Conn) {
 			ob := e.RequestOrderBook(o.instrument)
 			ot := o.orderType
 			o.orderType = inputCancel
-			ob.HandleOrder(OrderBookRequest{order: o, orderType: ot})
+			ob.HandleOrder(OrderBookRequest{order: o, orderType: ot, output: output})
 		default:
 			fmt.Fprintf(os.Stderr, "Got order: %c %v x %v @ %v ID: %v\n",
 				in.orderType, in.instrument, in.count, in.price, in.orderId)
@@ -90,8 +92,10 @@ func (e *Engine) handleConn(conn net.Conn) {
 			orders[o.orderId] = &o
 
 			ob := e.RequestOrderBook(in.instrument)
-			ob.HandleOrder(OrderBookRequest{order: &o, orderType: o.orderType})
+			ob.HandleOrder(OrderBookRequest{order: &o, orderType: o.orderType, output: output})
 		}
+
+		<-output
 	}
 }
 

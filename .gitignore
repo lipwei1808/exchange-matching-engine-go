@@ -2,3 +2,4 @@
 build
 grader_*.md
 grader_*.html
+tests/custom/*.in

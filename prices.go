@@ -8,14 +8,24 @@ import (
 	"math"
 )
 
+type PricesRequest struct {
+	order  *Order
+	output chan interface{}
+}
+
+func (p PricesRequest) Done() {
+	log.Printf("[prices.Done] orderid: %d", p.order.orderId)
+	p.output <- struct{}{}
+}
+
 type Prices struct {
 	prices     PriceLevel
 	pricesType inputType
-	inputChan  chan *Order
-	oppChan    chan *Order
+	inputChan  chan PricesRequest
+	oppChan    chan PricesRequest
 }
 
-func NewPrices(ctx context.Context, oppChan chan *Order, pricesType inputType) (*Prices, error) {
+func NewPrices(ctx context.Context, oppChan chan PricesRequest, pricesType inputType) (*Prices, error) {
 	if pricesType == inputCancel {
 		return nil, errors.New("only allow buy or sell inputType")
 	}
@@ -23,7 +33,7 @@ func NewPrices(ctx context.Context, oppChan chan *Order, pricesType inputType) (
 	p := &Prices{
 		pricesType: pricesType,
 		prices:     make(PriceLevel, 0),
-		inputChan:  make(chan *Order),
+		inputChan:  make(chan PricesRequest),
 		oppChan:    oppChan,
 	}
 
@@ -38,28 +48,34 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case o := <-p.oppChan:
-			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
-			p.Add(o)
-			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d, heaplen: %d\n", p.pricesType, o.orderId, len(p.prices))
+		case req := <-p.oppChan:
+			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, req.order.orderId)
+			p.Add(req.order)
+
+			req.Done()
 			break
-		case o := <-p.inputChan:
-			log.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d, ordertype: %c\n", p.pricesType, o.orderId, o.orderType)
-			switch o.orderType {
+
+		case req := <-p.inputChan:
+			log.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d, ordertype: %c\n", p.pricesType, req.order.orderId, req.order.orderType)
+
+			switch req.order.orderType {
 			case inputCancel:
-				p.Cancel(o)
+				p.Cancel(req.order)
+				req.Done()
 				break
 			default:
-				p.Execute(ctx, o)
+				done := p.Execute(ctx, req)
+				if done {
+					req.Done()
+				}
 			}
-
 		}
 		log.Printf("[prices.pricesWorker (%c)] END LOOP\n", p.pricesType)
 	}
 }
 
-func (p *Prices) HandleOrder(o *Order) {
-	log.Printf("[prices.HandleOrder (%c)] orderid: %d, heaplen (%d)\n", p.pricesType, o.orderId, len(p.prices))
+func (p *Prices) HandleOrder(o PricesRequest) {
+	log.Printf("[prices.HandleOrder (%c)] orderid: %d, heaplen (%d)\n", p.pricesType, o.order.orderId, len(p.prices))
 	p.inputChan <- o
 }
 
@@ -80,38 +96,37 @@ func (p *Prices) Cancel(o *Order) {
 	outputOrderDeleted(o.ToInput(), f, GetCurrentTimestamp())
 }
 
-func (p *Prices) Execute(ctx context.Context, oppOrder *Order) {
+func (p *Prices) Execute(ctx context.Context, req PricesRequest) bool {
+	oppOrder := req.order
 	// check if valid order type
 	if oppOrder.orderType == p.pricesType {
-		return
+		return false
 	}
 
 	// check for valid matches
 	matches := p.Match(oppOrder)
 
 	if matches == oppOrder.count {
-		return
+		return true
 	}
 
 	// check oppChan if order is to be added
 	select {
 	case <-ctx.Done():
 		break
-	case o := <-p.oppChan:
+	case r := <-p.oppChan:
 		// perform operation on order
-		if o.orderType == inputCancel {
-			p.Cancel(o)
-		} else {
-			p.Add(o)
-		}
+		p.Add(r.order)
+		r.Done()
 
 		// re-execute current oppOrder
-		p.Execute(ctx, oppOrder)
-		return
+		return p.Execute(ctx, req)
 	// if no order in oppChan, send order to add.
-	case p.oppChan <- oppOrder:
-		return
+	case p.oppChan <- req:
+		return false
 	}
+
+	return false
 }
 
 func (p *Prices) IsMatchable(oppOrder *Order) bool {

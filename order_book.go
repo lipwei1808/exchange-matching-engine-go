@@ -8,6 +8,7 @@ import (
 type OrderBookRequest struct {
 	order     *Order
 	orderType inputType
+	output    chan interface{}
 }
 
 type OrderBook struct {
@@ -17,7 +18,7 @@ type OrderBook struct {
 }
 
 func NewOrderBook(ctx context.Context) *OrderBook {
-	oppChan := make(chan *Order)
+	oppChan := make(chan PricesRequest)
 	bids, err := NewPrices(ctx, oppChan, inputBuy)
 	if err != nil {
 		panic(err)
@@ -44,21 +45,22 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case o := <-ob.inputChan:
-			log.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", o.order.orderId, o.order.orderType)
-			switch o.order.orderType {
+		case req := <-ob.inputChan:
+			log.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", req.order.orderId, req.order.orderType)
+
+			r := PricesRequest{order: req.order, output: req.output}
+			switch req.order.orderType {
 			case inputBuy:
-				ob.asks.HandleOrder(o.order)
+				ob.asks.HandleOrder(r)
 				break
 			case inputSell:
-				ob.bids.HandleOrder(o.order)
+				ob.bids.HandleOrder(r)
 				break
 			default:
-				if o.orderType == inputBuy {
-					ob.bids.HandleOrder(o.order)
+				if req.orderType == inputBuy {
+					ob.bids.HandleOrder(r)
 				} else {
-					ob.asks.HandleOrder(o.order)
-
+					ob.asks.HandleOrder(r)
 				}
 				break
 			}

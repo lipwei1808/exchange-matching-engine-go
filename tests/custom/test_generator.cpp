@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         for (int j = 0; j < command_count; j++)
         {
             int thread = rand() % 40;
-            int buy_or_sell_or_canc = rand() % 2;
+            int buy_or_sell_or_canc = rand() % 3;
             int ticker = rand() % ticker_count;
 
             if (buy_or_sell_or_canc == 2)
