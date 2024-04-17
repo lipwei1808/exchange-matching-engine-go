@@ -1,15 +1,18 @@
 #!/bin/bash
-echo $1
-if [ $1 == 0 ]
+
+if [[ $1 -eq "0" ]] || [[ -z $1 ]]
 then
-  echo hello
-elif [ $1 == 1 ]
-then
-elif [ $1 == ""]
-  echo hello2
+  for i in ./basic/*.in; do
+    last=$(../grader ../build/engine < $i 2>&1 | tail -n -1) 
+    echo $i test: $last
+  done
 fi
 
-for i in ./*.in; do
-  last=$(../grader ../build/engine < $i 2>&1 | tail -n -1) 
-  echo $i test: $last
-done
+if [[ $1 -eq "1" ]] || [[ -z $1 ]]
+then
+  for i in ./custom/*.in; do
+    last=$(../grader ../build/engine < $i 2>&1 | tail -n -1) 
+    echo $i test: $last
+  done
+fi
+
