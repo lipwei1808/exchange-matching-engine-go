@@ -1,5 +1,11 @@
 package main
 
+import (
+	"container/heap"
+	"fmt"
+	"log"
+)
+
 type PriceLevel []*Order
 
 func (p PriceLevel) Len() int {
@@ -37,4 +43,32 @@ func (p *PriceLevel) Pop() any {
 	x := old[n-1]
 	*p = old[0 : n-1]
 	return x
+}
+
+func (p *PriceLevel) Delete(id uint32) bool {
+	f := false
+	old := *p
+	for i, d := range old {
+		if d.orderId == id {
+			f = true
+			old[i], old[len(old)-1] = old[len(old)-1], old[i]
+			*p = old[:len(old)-1]
+			break
+		}
+	}
+
+	heap.Init(p)
+	return f
+}
+
+func (p PriceLevel) Print() {
+	s := ""
+	for i, d := range p {
+		de := "->"
+		if i == len(p)-1 {
+			de = ""
+		}
+		s += fmt.Sprintf("(%d, p:%d, c:%d)%s", d.orderId, d.price, d.count, de)
+	}
+	log.Printf("%s\n", s)
 }

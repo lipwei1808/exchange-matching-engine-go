@@ -81,18 +81,8 @@ func (p *Prices) HandleOrder(o PricesRequest) {
 
 func (p *Prices) Cancel(o *Order) {
 	log.Printf("[prices.Cancel (%c)] orderid: %d, orderType: %c, heaplen: %d\n", p.pricesType, o.orderId, o.orderType, len(p.prices))
-	f := false
-	for i, d := range p.prices {
-		log.Printf("[prices.Cancel-loop %d (%c)], orderid: %d\n", i, p.pricesType, d.orderId)
-		if d.orderId == o.orderId {
-			f = true
-			p.prices[i], p.prices[len(p.prices)-1] = p.prices[len(p.prices)-1], p.prices[i]
-			p.prices = p.prices[:len(p.prices)-1]
-			break
-		}
-	}
+	f := p.prices.Delete(o.orderId)
 
-	heap.Init(&p.prices)
 	outputOrderDeleted(o.ToInput(), f, GetCurrentTimestamp())
 }
 
@@ -147,6 +137,8 @@ func (p *Prices) IsMatchable(oppOrder *Order) bool {
 func (p *Prices) Match(incoming *Order) uint32 {
 	matched := uint32(0)
 	for incoming.count > 0 {
+		log.Printf("[prices.Match (%c)] ", p.pricesType)
+		p.prices.Print()
 		// check if any valid orders to match
 		if len(p.prices) == 0 {
 			break
@@ -187,11 +179,12 @@ func MatchOrders(resting, incoming *Order) {
 // Adds an order of the same type to the heap
 func (p *Prices) Add(o *Order) {
 	log.Printf("[prices.Add (%c)] order: %d\n", p.pricesType, o.orderId)
+	o.timestamp = GetCurrentTimestamp()
 	if o.orderType != p.pricesType {
 		return
 	}
 
 	heap.Push(&p.prices, o)
 	log.Printf("[prices.Add (%c)] new heaplen: %d\n", p.pricesType, len(p.prices))
-	outputOrderAdded(o.ToInput(), GetCurrentTimestamp())
+	outputOrderAdded(o.ToInput(), o.timestamp)
 }
