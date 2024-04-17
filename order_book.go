@@ -46,7 +46,7 @@ func (ob *OrderBook) orderBookWorker(ctx context.Context) {
 			return
 		case o := <-ob.inputChan:
 			log.Printf("[order_book.orderBookWorker] order: %d, type: %c\n", o.order.orderId, o.order.orderType)
-			switch o.orderType {
+			switch o.order.orderType {
 			case inputBuy:
 				ob.asks.HandleOrder(o.order)
 				break

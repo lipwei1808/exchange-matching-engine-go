@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"time"
@@ -71,7 +72,7 @@ func (e *Engine) handleConn(conn net.Conn) {
 				continue
 			}
 
-			ob := e.RequestOrderBook(in.instrument)
+			ob := e.RequestOrderBook(o.instrument)
 			ot := o.orderType
 			o.orderType = inputCancel
 			ob.HandleOrder(OrderBookRequest{order: o, orderType: ot})
@@ -108,6 +109,7 @@ func (e *Engine) RequestOrderBook(i string) *OrderBook {
 func (e *Engine) GetOrderBook(ctx context.Context, instrument string) *OrderBook {
 	_, exists := e.instruments[instrument]
 	if !exists {
+		log.Printf("[engine.GetOrderBook] instrument: %s not found\n", instrument)
 		e.instruments[instrument] = NewOrderBook(ctx)
 	}
 

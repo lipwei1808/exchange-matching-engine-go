@@ -34,15 +34,17 @@ func NewPrices(ctx context.Context, oppChan chan *Order, pricesType inputType) (
 
 func (p *Prices) pricesWorker(ctx context.Context) {
 	for {
+		log.Printf("[prices.pricesWorker (%c)] NEW LOOP heaplen: %d \n", p.pricesType, len(p.prices))
 		select {
 		case <-ctx.Done():
 			return
 		case o := <-p.oppChan:
 			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
 			p.Add(o)
+			log.Printf("[prices.pricesWorker.oppChan (%c)] orderid: %d, heaplen: %d\n", p.pricesType, o.orderId, len(p.prices))
 			break
 		case o := <-p.inputChan:
-			log.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d\n", p.pricesType, o.orderId)
+			log.Printf("[prices.pricesWorker.inputChan (%c)] orderid: %d, ordertype: %c\n", p.pricesType, o.orderId, o.orderType)
 			switch o.orderType {
 			case inputCancel:
 				p.Cancel(o)
@@ -52,17 +54,22 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 			}
 
 		}
+		log.Printf("[prices.pricesWorker (%c)] END LOOP\n", p.pricesType)
 	}
 }
 
 func (p *Prices) HandleOrder(o *Order) {
-	log.Printf("[prices.HandleOrder (%c)] orderid: %d\n", p.pricesType, o.orderId)
+	log.Printf("[prices.HandleOrder (%c)] orderid: %d, heaplen (%d)\n", p.pricesType, o.orderId, len(p.prices))
 	p.inputChan <- o
 }
 
 func (p *Prices) Cancel(o *Order) {
+	log.Printf("[prices.Cancel (%c)] orderid: %d, orderType: %c, heaplen: %d\n", p.pricesType, o.orderId, o.orderType, len(p.prices))
+	f := false
 	for i, d := range p.prices {
+		log.Printf("[prices.Cancel-loop %d (%c)], orderid: %d\n", i, p.pricesType, d.orderId)
 		if d.orderId == o.orderId {
+			f = true
 			p.prices[i], p.prices[len(p.prices)-1] = p.prices[len(p.prices)-1], p.prices[i]
 			p.prices = p.prices[:len(p.prices)-1]
 			break
@@ -70,6 +77,7 @@ func (p *Prices) Cancel(o *Order) {
 	}
 
 	heap.Init(&p.prices)
+	outputOrderDeleted(o.ToInput(), f, GetCurrentTimestamp())
 }
 
 func (p *Prices) Execute(ctx context.Context, oppOrder *Order) {
@@ -169,5 +177,6 @@ func (p *Prices) Add(o *Order) {
 	}
 
 	heap.Push(&p.prices, o)
+	log.Printf("[prices.Add (%c)] new heaplen: %d\n", p.pricesType, len(p.prices))
 	outputOrderAdded(o.ToInput(), GetCurrentTimestamp())
 }
