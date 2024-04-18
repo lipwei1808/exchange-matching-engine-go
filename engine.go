@@ -36,6 +36,7 @@ func (e *Engine) engineWorker(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			close(e.mainChan)
 			return
 		case p := <-e.mainChan:
 			ob := e.GetOrderBook(ctx, p.instrument)
@@ -95,6 +96,7 @@ func (e *Engine) handleConn(conn net.Conn) {
 		}
 
 		<-output
+		close(output)
 	}
 }
 
@@ -106,7 +108,9 @@ func (e *Engine) RequestOrderBook(i string) *OrderBook {
 	}
 	e.mainChan <- req
 
-	return <-output
+	ob := <-output
+	close(output)
+	return ob
 }
 
 func (e *Engine) GetOrderBook(ctx context.Context, instrument string) *OrderBook {

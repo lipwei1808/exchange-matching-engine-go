@@ -43,6 +43,10 @@ func NewPrices(ctx context.Context, oppChan chan PricesRequest, pricesType input
 }
 
 func (p *Prices) pricesWorker(ctx context.Context) {
+	defer func() {
+		close(p.inputChan)
+	}()
+
 	for {
 		log.Printf("[prices.pricesWorker (%c)] NEW LOOP heaplen: %d \n", p.pricesType, len(p.prices))
 		select {

@@ -35,12 +35,17 @@ func NewOrderBook(ctx context.Context) *OrderBook {
 		inputChan: make(chan OrderBookRequest),
 	}
 
-	go ob.orderBookWorker(ctx)
+	go ob.orderBookWorker(ctx, oppChan)
 
 	return &ob
 }
 
-func (ob *OrderBook) orderBookWorker(ctx context.Context) {
+func (ob *OrderBook) orderBookWorker(ctx context.Context, oppChan chan PricesRequest) {
+	defer func() {
+		close(oppChan)
+		close(ob.inputChan)
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
