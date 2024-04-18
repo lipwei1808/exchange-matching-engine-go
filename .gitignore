@@ -2,5 +2,7 @@
 build
 grader_*.md
 grader_*.html
-tests/custom/*.in
-tests/custom/*.out
+
+tests/custom/*
+!tests/custom/test_generator.cpp
+!tests/custom/README.md
