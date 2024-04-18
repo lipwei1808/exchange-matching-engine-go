@@ -45,6 +45,12 @@ func NewPrices(ctx context.Context, oppChan chan PricesRequest, pricesType input
 	return p, nil
 }
 
+// Listens on oppChan and inputChan for requests.
+// Orders coming from oppChan are from the opposing heap
+// after execution. Orders from the oppChan would then
+// be added to the heap.
+// Orders from the inputChan are either for matching or
+// cancelling.
 func (p *Prices) pricesWorker(ctx context.Context) {
 	defer func() {
 		close(p.inputChan)
@@ -92,6 +98,10 @@ func (p *Prices) Cancel(o *Order) {
 	outputOrderDeleted(o.ToInput(), f, GetCurrentTimestamp())
 }
 
+// Executes the given order and returns if the order
+// has been fully matched. If not matched, the order
+// is sent to the other heap through the oppChan, to be
+// added.
 func (p *Prices) Execute(ctx context.Context, req PricesRequest) bool {
 	oppOrder := req.order
 	// check if valid order type

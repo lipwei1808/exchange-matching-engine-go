@@ -5,6 +5,11 @@ import (
 	"log"
 )
 
+// orderType represents the type of the underlying order.
+// This is primarily used for the Cancel orders so the
+// order book can route the cancel order to the correct heap.
+// output channel is used to signal to the client when the order
+// has completed execution.
 type OrderBookRequest struct {
 	order     *Order
 	orderType inputType
@@ -44,6 +49,10 @@ func NewOrderBook(ctx context.Context) *OrderBook {
 	return &ob
 }
 
+// Sends the order received from inputChan to the correct
+// heap in the order book.
+// For buy and sell orders, they are sent to the opposing heap for matching.
+// For cancel orders, they are sent to their respective heaps.
 func (ob *OrderBook) orderBookWorker(ctx context.Context, oppChan chan PricesRequest) {
 	defer func() {
 		close(oppChan)
