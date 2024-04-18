@@ -17,6 +17,10 @@ type OrderBook struct {
 	inputChan chan OrderBookRequest
 }
 
+// Creates a new order book and initialises the two buy and
+// sell heaps. Responsible for initialising the orderbook
+// goroutine and the communication channel (oppChan)
+// between the 2 heaps.
 func NewOrderBook(ctx context.Context) *OrderBook {
 	oppChan := make(chan PricesRequest)
 	bids, err := NewPrices(ctx, oppChan, inputBuy)

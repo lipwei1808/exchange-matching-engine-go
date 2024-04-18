@@ -25,6 +25,9 @@ type Prices struct {
 	oppChan    chan PricesRequest
 }
 
+// Creates a new heap in an orderbook.
+// Initialises the inputChan for communication
+// with goroutine running for the heap.
 func NewPrices(ctx context.Context, oppChan chan PricesRequest, pricesType inputType) (*Prices, error) {
 	if pricesType == inputCancel {
 		return nil, errors.New("only allow buy or sell inputType")
@@ -48,7 +51,6 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 	}()
 
 	for {
-		log.Printf("[prices.pricesWorker (%c)] NEW LOOP heaplen: %d \n", p.pricesType, len(p.prices))
 		select {
 		case <-ctx.Done():
 			return
@@ -74,7 +76,6 @@ func (p *Prices) pricesWorker(ctx context.Context) {
 				}
 			}
 		}
-		log.Printf("[prices.pricesWorker (%c)] END LOOP\n", p.pricesType)
 	}
 }
 
@@ -83,11 +84,10 @@ func (p *Prices) HandleOrder(o PricesRequest) {
 	p.inputChan <- o
 }
 
+// Cancels an order in the heap.
 func (p *Prices) Cancel(o *Order) {
 	log.Printf("[prices.Cancel (%c)] orderid: %d, orderType: %c, heaplen: %d\n", p.pricesType, o.orderId, o.orderType, len(p.prices))
-	log.Printf("[prices.Cancel (%c)] BEFORE DELETE %d: %s", p.pricesType, o.orderId, p.prices.ToString())
 	f := p.prices.Delete(o.orderId)
-	log.Printf("[prices.Cancel (%c)] AFTER DELETE: %s", p.pricesType, p.prices.ToString())
 
 	outputOrderDeleted(o.ToInput(), f, GetCurrentTimestamp())
 }
@@ -138,8 +138,7 @@ func (p *Prices) IsMatchable(oppOrder *Order) bool {
 }
 
 // Attempts to match opposing order with resting orders on the heap
-// @param oppOrder order of the opposing type
-// @returns number of successful quantity matches
+// Returns whether the entire incoming order has been matched
 func (p *Prices) Match(incoming *Order) bool {
 	for incoming.count > 0 && len(p.prices) > 0 && p.IsMatchable(incoming) {
 		log.Printf("[prices.Match (%c)] orderid: %d, %s", p.pricesType, incoming.orderId, p.prices.ToString())
@@ -156,6 +155,9 @@ func (p *Prices) Match(incoming *Order) bool {
 	return incoming.count == 0
 }
 
+// Matches the two incoming and resting orders and
+// updates the count after the matching and execution.
+// Responsible for outputting execution message.
 func MatchOrders(resting, incoming *Order) uint32 {
 	qty := uint32(math.Min(float64(resting.count), float64(incoming.count)))
 	log.Printf("[prices.MatchOrders] qty: %d, resting cnt: %d, incomnig cnt: %d\n", qty, resting.count, incoming.count)
@@ -180,9 +182,8 @@ func (p *Prices) Add(o *Order) {
 	if o.orderType != p.pricesType {
 		return
 	}
-	log.Printf("[prices.Add (%c)] BEFORE ADD %d: %s", p.pricesType, o.orderId, p.prices.ToString())
+
 	heap.Push(&p.prices, o)
-	log.Printf("[prices.Add (%c)] AFTER ADD %d: %s", p.pricesType, o.orderId, p.prices.ToString())
 
 	outputOrderAdded(o.ToInput(), o.timestamp)
 }
