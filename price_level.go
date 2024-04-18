@@ -3,7 +3,6 @@ package main
 import (
 	"container/heap"
 	"fmt"
-	"log"
 )
 
 type PriceLevel []*Order
@@ -26,7 +25,7 @@ func (p PriceLevel) Less(i, j int) bool {
 		return p[i].price < p[j].price
 	}
 
-	return p[j].price < p[i].price
+	return p[i].price > p[j].price
 }
 
 func (p PriceLevel) Swap(i, j int) {
@@ -61,14 +60,20 @@ func (p *PriceLevel) Delete(id uint32) bool {
 	return f
 }
 
-func (p PriceLevel) Print() {
+func (p PriceLevel) ToString() string {
+	c := make(PriceLevel, len(p))
+	copy(c, p)
+
+	heap.Init(&c)
 	s := ""
-	for i, d := range p {
+	for len(c) > 0 {
 		de := "->"
-		if i == len(p)-1 {
+		if len(c) == 1 {
 			de = ""
 		}
-		s += fmt.Sprintf("(%d, p:%d, c:%d)%s", d.orderId, d.price, d.count, de)
+		o := heap.Pop(&c).(*Order)
+		s += fmt.Sprintf("(%d, p:%d, c:%d)%s", o.orderId, o.price, o.count, de)
 	}
-	log.Printf("%s\n", s)
+
+	return s
 }
