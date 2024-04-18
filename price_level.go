@@ -64,7 +64,6 @@ func (p PriceLevel) ToString() string {
 	c := make(PriceLevel, len(p))
 	copy(c, p)
 
-	heap.Init(&c)
 	s := ""
 	for len(c) > 0 {
 		de := "->"
@@ -72,7 +71,7 @@ func (p PriceLevel) ToString() string {
 			de = ""
 		}
 		o := heap.Pop(&c).(*Order)
-		s += fmt.Sprintf("(%d, p:%d, c:%d)%s", o.orderId, o.price, o.count, de)
+		s += fmt.Sprintf("(%d (%c), p:%d, c:%d)%s", o.orderId, o.orderType, o.price, o.count, de)
 	}
 
 	return s

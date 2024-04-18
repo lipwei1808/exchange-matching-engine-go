@@ -56,8 +56,8 @@ func (e *Engine) handleConn(conn net.Conn) {
 	defer conn.Close()
 	orders := make(map[uint32]*Order)
 
-	output := make(chan interface{})
 	for {
+		output := make(chan interface{})
 		in, err := readInput(conn)
 		if err != nil {
 			if err != io.EOF {
@@ -65,34 +65,33 @@ func (e *Engine) handleConn(conn net.Conn) {
 			}
 			return
 		}
+		o := Order{
+			orderType:   in.orderType,
+			orderId:     in.orderId,
+			price:       in.price,
+			count:       in.count,
+			instrument:  in.instrument,
+			executionId: 0,
+		}
 		switch in.orderType {
 		case inputCancel:
 			fmt.Fprintf(os.Stderr, "Got cancel ID: %v\n", in.orderId)
-			o, exists := orders[in.orderId]
+			oo, exists := orders[in.orderId]
 			if !exists {
 				outputOrderDeleted(in, false, GetCurrentTimestamp())
 				continue
 			}
 
-			ob := e.RequestOrderBook(o.instrument)
-			ot := o.orderType
-			o.orderType = inputCancel
-			ob.HandleOrder(OrderBookRequest{order: o, orderType: ot, output: output})
+			ob := e.RequestOrderBook(oo.instrument)
+			ob.HandleOrder(OrderBookRequest{order: &o, orderType: oo.orderType, output: output})
+			break
 		default:
 			fmt.Fprintf(os.Stderr, "Got order: %c %v x %v @ %v ID: %v\n",
 				in.orderType, in.instrument, in.count, in.price, in.orderId)
-			o := Order{
-				orderType:   in.orderType,
-				orderId:     in.orderId,
-				price:       in.price,
-				count:       in.count,
-				instrument:  in.instrument,
-				executionId: 0,
-			}
 			orders[o.orderId] = &o
 
-			ob := e.RequestOrderBook(in.instrument)
-			ob.HandleOrder(OrderBookRequest{order: &o, orderType: o.orderType, output: output})
+			ob := e.RequestOrderBook(o.instrument)
+			ob.HandleOrder(OrderBookRequest{order: &o, orderType: in.orderType, output: output})
 		}
 
 		<-output
